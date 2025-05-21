@@ -2,23 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Online Slot Machine</title>
+  <title>Slot Machine</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: sans-serif;
       text-align: center;
-      background: #222;
-      color: #fff;
+      background: #1e1e1e;
+      color: white;
     }
     .slot {
-      font-size: 3rem;
-      margin: 20px;
+      font-size: 5rem;
     }
-    button {
-      padding: 10px 20px;
-      font-size: 1.2rem;
-      cursor: pointer;
+    .controls {
+      margin: 20px;
     }
     #leaderboard {
       margin-top: 30px;
@@ -26,18 +22,17 @@
   </style>
 </head>
 <body>
-  <h1>🎰 Online Slots</h1>
+  <h1>🎰 Slot Machine</h1>
 
-  <div>
-    <label for="username">Username:</label>
-    <input type="text" id="username" placeholder="Enter name" />
-    <button onclick="setUsername()">Start</button>
+  <div class="controls">
+    <label>Username: <input id="username" type="text" /></label>
+    <button onclick="startGame()">Start</button>
   </div>
 
-  <div style="margin-top: 20px;">
+  <div id="game" style="display:none">
     <div class="slot" id="slots">❓ ❓ ❓</div>
-    <p>Coins: <span id="coinDisplay">100</span></p>
-    <button id="spinBtn" onclick="spin()" disabled>Spin</button>
+    <p>Coins: <span id="coins">100</span></p>
+    <button id="spinBtn" onclick="spin()">Spin</button>
   </div>
 
   <div id="leaderboard">
@@ -49,28 +44,28 @@
     const symbols = ['🍒', '🍋', '🍊', '💎', '7️⃣'];
     let coins = 100;
     let username = '';
-    const API_URL = 'https://slots-4jaj.onrender.com'; // Replace with your backend URL
+    const API_URL = 'https://your-api-url.onrender.com'; // Replace with your backend URL
 
-    const coinDisplay = document.getElementById('coinDisplay');
     const spinBtn = document.getElementById('spinBtn');
+    const coinDisplay = document.getElementById('coins');
     const slots = document.getElementById('slots');
     const leaderboardList = document.getElementById('leaderboardList');
 
-    function setUsername() {
+    function startGame() {
       const input = document.getElementById('username');
-      if (input.value.trim() === '') {
-        alert('Enter a username first!');
+      username = input.value.trim();
+      if (!username) {
+        alert('Enter a username');
         return;
       }
-      username = input.value.trim();
+      document.getElementById('game').style.display = 'block';
       input.disabled = true;
-      spinBtn.disabled = false;
       updateLeaderboard();
     }
 
     function spin() {
-      if (coins <= 0) {
-        alert('Out of coins!');
+      if (coins < 10) {
+        alert('Not enough coins!');
         return;
       }
 
@@ -97,7 +92,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, coins })
-      }).then(() => updateLeaderboard());
+      }).then(updateLeaderboard);
     }
 
     function updateLeaderboard() {
@@ -105,9 +100,9 @@
         .then(res => res.json())
         .then(data => {
           leaderboardList.innerHTML = '';
-          data.forEach(user => {
+          data.forEach(entry => {
             const li = document.createElement('li');
-            li.textContent = `${user.username}: ${user.coins} coins`;
+            li.textContent = `${entry.username}: ${entry.coins} coins`;
             leaderboardList.appendChild(li);
           });
         });
