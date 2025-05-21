@@ -171,7 +171,8 @@
 
     function updateCoinsDisplay() {
       coinsDisplay.textContent = `💰 Coins: ${coins}`;
-      spinButton.disabled = coins < parseInt(betSelect.value) || isSpinning;
+      // Spin button always enabled now:
+      spinButton.disabled = false;
     }
 
     function animateReels() {
