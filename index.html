@@ -2,111 +2,323 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Slot Machine</title>
+  <title>Enhanced Casino Slot Machine</title>
   <style>
     body {
-      font-family: sans-serif;
+      font-family: 'Arial', sans-serif;
+      background-color: #222;
+      color: white;
       text-align: center;
-      background: #1e1e1e;
+      padding-top: 50px;
+      user-select: none;
+    }
+
+    .slot-machine {
+      display: inline-block;
+      background: #444;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+      max-width: 400px;
+      margin: auto;
+    }
+
+    .reels {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .reel {
+      font-size: 50px;
+      width: 90px;
+      height: 90px;
+      line-height: 90px;
+      background: #000;
+      margin: 0 10px;
+      border-radius: 10px;
+      border: 2px solid #fff;
+      transition: transform 0.3s ease;
+    }
+
+    button, select, input {
+      padding: 10px 15px;
+      font-size: 18px;
+      margin: 5px;
+      border-radius: 5px;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background: #555;
+      cursor: not-allowed;
+    }
+
+    button {
+      background-color: #0f0;
+      color: #000;
+      font-weight: bold;
+    }
+
+    select, input {
+      background-color: #333;
       color: white;
     }
-    .slot {
-      font-size: 5rem;
+
+    .message {
+      margin-top: 15px;
+      font-size: 24px;
+      min-height: 30px;
     }
-    .controls {
-      margin: 20px;
+
+    .coins, .bet-section, .login-section, .leaderboard {
+      margin-top: 15px;
+      font-size: 18px;
     }
-    #leaderboard {
-      margin-top: 30px;
+
+    .leaderboard {
+      background: #333;
+      padding: 10px;
+      border-radius: 10px;
+      text-align: left;
+      max-width: 350px;
+      margin: 20px auto 0;
+    }
+
+    input[type="text"] {
+      padding: 8px;
+      font-size: 16px;
+      width: 150px;
     }
   </style>
 </head>
 <body>
-  <h1>🎰 Slot Machine</h1>
 
-  <div class="controls">
-    <label>Username: <input id="username" type="text" /></label>
-    <button onclick="startGame()">Start</button>
+  <div class="slot-machine">
+
+    <!-- Login -->
+    <div class="login-section" id="loginSection">
+      <h2>Login / Enter Username</h2>
+      <input type="text" id="usernameInput" placeholder="Your name" />
+      <button onclick="login()">Login</button>
+    </div>
+
+    <!-- Game Area -->
+    <div id="gameArea" style="display:none;">
+      <h2>Welcome, <span id="usernameDisplay"></span>!</h2>
+      <div class="coins" id="coinsDisplay">💰 Coins: 100</div>
+
+      <div class="bet-section">
+        <label for="betSelect">Bet Amount: </label>
+        <select id="betSelect">
+          <option value="1">1 Coin</option>
+          <option value="5">5 Coins</option>
+          <option value="10">10 Coins</option>
+        </select>
+      </div>
+
+      <div class="reels">
+        <div class="reel" id="reel1">🍒</div>
+        <div class="reel" id="reel2">🍋</div>
+        <div class="reel" id="reel3">🔔</div>
+      </div>
+
+      <button id="spinButton" onclick="spin()">Spin</button>
+
+      <div class="message" id="message"></div>
+
+      <div class="leaderboard" id="leaderboardSection">
+        <h3>Leaderboard</h3>
+        <ol id="leaderboardList"></ol>
+      </div>
+    </div>
+
   </div>
 
-  <div id="game" style="display:none">
-    <div class="slot" id="slots">❓ ❓ ❓</div>
-    <p>Coins: <span id="coins">100</span></p>
-    <button id="spinBtn" onclick="spin()">Spin</button>
-  </div>
-
-  <div id="leaderboard">
-    <h2>🏆 Leaderboard</h2>
-    <ul id="leaderboardList"></ul>
-  </div>
+  <audio id="spinSound" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"></audio>
+  <audio id="winSound" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
 
   <script>
-    const symbols = ['🍒', '🍋', '🍊', '💎', '7️⃣'];
+    const symbols = ['🍒', '🍋', '🔔', '🍊', '💎', '7️⃣'];
+
     let coins = 100;
     let username = '';
-    const API_URL = 'https://your-api-url.onrender.com'; // Replace with your backend URL
+    let isSpinning = false;
 
-    const spinBtn = document.getElementById('spinBtn');
-    const coinDisplay = document.getElementById('coins');
-    const slots = document.getElementById('slots');
+    const coinsDisplay = document.getElementById('coinsDisplay');
+    const messageDisplay = document.getElementById('message');
+    const spinButton = document.getElementById('spinButton');
+    const betSelect = document.getElementById('betSelect');
+    const reelElements = [
+      document.getElementById('reel1'),
+      document.getElementById('reel2'),
+      document.getElementById('reel3')
+    ];
+
+    const spinSound = document.getElementById('spinSound');
+    const winSound = document.getElementById('winSound');
+
+    const loginSection = document.getElementById('loginSection');
+    const gameArea = document.getElementById('gameArea');
+    const usernameInput = document.getElementById('usernameInput');
+    const usernameDisplay = document.getElementById('usernameDisplay');
     const leaderboardList = document.getElementById('leaderboardList');
 
-    function startGame() {
-      const input = document.getElementById('username');
-      username = input.value.trim();
-      if (!username) {
-        alert('Enter a username');
+    function getRandomSymbol() {
+      return symbols[Math.floor(Math.random() * symbols.length)];
+    }
+
+    function updateCoinsDisplay() {
+      coinsDisplay.textContent = `💰 Coins: ${coins}`;
+      // Spin button always enabled now:
+      spinButton.disabled = false;
+    }
+
+    const API_URL = "https://slots-4jaj.onrender.com";
+
+function saveScore() {
+  fetch(`${API_URL}/submit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, coins })
+  });
+}
+
+function updateLeaderboard() {
+  fetch(`${API_URL}/leaderboard`)
+    .then(res => res.json())
+    .then(users => {
+      leaderboardList.innerHTML = '';
+      users.forEach(user => {
+        const li = document.createElement('li');
+        li.textContent = `${user.username}: ${user.coins} coins`;
+        leaderboardList.appendChild(li);
+      });
+    });
+}
+
+    function animateReels() {
+      let frames = 20;
+      let frame = 0;
+      return new Promise(resolve => {
+        const interval = setInterval(() => {
+          reelElements.forEach(el => {
+            el.textContent = getRandomSymbol();
+            el.style.transform = `translateY(${Math.random() * 10 - 5}px)`;
+          });
+          frame++;
+          if (frame >= frames) {
+            clearInterval(interval);
+            reelElements.forEach(el => el.style.transform = 'translateY(0)');
+            resolve();
+          }
+        }, 50);
+      });
+    }
+
+    async function spin() {
+      if (isSpinning) return;
+      const bet = parseInt(betSelect.value);
+
+      if (coins < bet) {
+        messageDisplay.textContent = "❌ Not enough coins to bet that amount!";
         return;
       }
-      document.getElementById('game').style.display = 'block';
-      input.disabled = true;
+
+      isSpinning = true;
+      messageDisplay.textContent = "";
+      coins -= bet;
+      updateCoinsDisplay();
+
+      spinSound.currentTime = 0;
+      spinSound.play();
+
+      await animateReels();
+
+      const results = [getRandomSymbol(), getRandomSymbol(), getRandomSymbol()];
+      for (let i = 0; i < 3; i++) {
+        reelElements[i].textContent = results[i];
+      }
+
+      if (results[0] === results[1] && results[1] === results[2]) {
+        const winnings = bet * 10;
+        coins += winnings;
+        messageDisplay.textContent = `🎉 JACKPOT! You won ${winnings} coins! 🎉`;
+        winSound.currentTime = 0;
+        winSound.play();
+      } else if (results[0] === results[1] || results[1] === results[2] || results[0] === results[2]) {
+        const winnings = bet * 2;
+        coins += winnings;
+        messageDisplay.textContent = `😊 Nice! You won ${winnings} coins!`;
+        winSound.currentTime = 0;
+        winSound.play();
+      } else {
+        messageDisplay.textContent = "😞 No match. Try again!";
+      }
+
+      updateCoinsDisplay();
+      isSpinning = false;
+
       updateLeaderboard();
     }
 
-    function spin() {
-      if (coins < 10) {
-        alert('Not enough coins!');
+    function login() {
+      const name = usernameInput.value.trim();
+      if (!name) {
+        alert("Please enter a username.");
         return;
       }
+      username = name;
+      usernameDisplay.textContent = username;
+      loginSection.style.display = 'none';
+      gameArea.style.display = 'block';
 
-      coins -= 10;
-      const result = [
-        symbols[Math.floor(Math.random() * symbols.length)],
-        symbols[Math.floor(Math.random() * symbols.length)],
-        symbols[Math.floor(Math.random() * symbols.length)],
-      ];
-      slots.textContent = result.join(' ');
-
-      if (result[0] === result[1] && result[1] === result[2]) {
-        coins += 50;
-      } else if (result[0] === result[1] || result[1] === result[2]) {
-        coins += 20;
+      const savedCoins = localStorage.getItem(`coins_${username}`);
+      if (savedCoins !== null) {
+        coins = parseInt(savedCoins);
+      } else {
+        coins = 100;
       }
+      updateCoinsDisplay();
 
-      coinDisplay.textContent = coins;
-      saveScore();
+      updateLeaderboard();
     }
 
-    function saveScore() {
-      fetch(`${API_URL}/submit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, coins })
-      }).then(updateLeaderboard);
-    }
+    window.addEventListener('beforeunload', () => {
+      if (username) {
+        localStorage.setItem(`coins_${username}`, coins);
+      }
+    });
 
     function updateLeaderboard() {
-      fetch(`${API_URL}/leaderboard`)
-        .then(res => res.json())
-        .then(data => {
-          leaderboardList.innerHTML = '';
-          data.forEach(entry => {
-            const li = document.createElement('li');
-            li.textContent = `${entry.username}: ${entry.coins} coins`;
-            leaderboardList.appendChild(li);
+      if (username) {
+        localStorage.setItem(`coins_${username}`, coins);
+      }
+
+      const users = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith('coins_')) {
+          users.push({
+            username: key.replace('coins_', ''),
+            coins: parseInt(localStorage.getItem(key))
           });
-        });
+        }
+      }
+
+      users.sort((a, b) => b.coins - a.coins);
+
+      leaderboardList.innerHTML = '';
+      users.slice(0, 5).forEach(user => {
+        const li = document.createElement('li');
+        li.textContent = `${user.username}: ${user.coins} coins`;
+        leaderboardList.appendChild(li);
+      });
     }
+
+    betSelect.addEventListener('change', updateCoinsDisplay);
   </script>
+
 </body>
 </html>
